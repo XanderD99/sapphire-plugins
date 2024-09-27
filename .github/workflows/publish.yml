@@ -1,26 +1,70 @@
+
 name: Publish
-run-name: Publish @sapphire/${{ inputs.package }}
+run-name: Publish ${{ inputs.package }}
 
 on:
   workflow_dispatch:
     inputs:
       package:
-        description: The package to release, this should be the path segment after packages/, without the @sapphire/ prefix
+        description: The package to release
         required: true
+        type: choice
+        options:
+          - prometheus
       skip-automatic-bump:
-        description: Whether to skip the automatic bumping of the packageversion
+        description: Whether to skip the automatic bumping of the package version
         required: false
         default: false
         type: boolean
+      build:
+        description: Whether to run `yarn build` before publishing
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}|${{ github.head_ref || github.ref }}|${{ inputs.package }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
-  PublishPackage:
-    name: Publish @sapphire/${{ inputs.package}}
-    uses: sapphiredev/.github/.github/workflows/reusable-publish.yml@main
-    with:
-      project-name: '@sapphire/${{ inputs.package}}'
-      working-directory: packages/${{ inputs.package }}
-      skip-automatic-bump: ${{ inputs.skip-automatic-bump }}
-    secrets:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-      SKYRA_TOKEN: ${{ secrets.SKYRA_TOKEN }}
+  publish:
+    name: Publish @kingsworld/${{ inputs.package }}
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'Kings-World'
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: yarn install --immutable
+
+      - name: Build Package
+        if: ${{ inputs.build }}
+        run: npm run build
+
+      - name: Bump versions and release
+        working-directory: packages/${{ inputs.package }}
+        run: |
+          if [ "${{ inputs.skip-automatic-bump }}" = "true" ]; then
+            npm run bump --skip-automatic-bump
+          else
+            npm run bump
+          fi
+
+      - name: Publish to NPM
+        working-directory: packages/${{ inputs.package }}
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
