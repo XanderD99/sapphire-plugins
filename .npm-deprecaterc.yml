@@ -1,0 +1,10 @@
+name: '*next*'
+package:
+  - '@sapphire/plugin-api'
+  - '@sapphire/plugin-editable-commands'
+  - '@sapphire/plugin-i18next'
+  - '@sapphire/plugin-logger'
+  - '@sapphire/plugin-pattern-commands'
+  - '@sapphire/plugin-scheduled-tasks'
+  - '@sapphire/plugin-subcommands'
+  - '@sapphire/plugin-utilities-store'
